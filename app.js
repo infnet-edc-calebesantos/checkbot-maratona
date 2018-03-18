@@ -42,6 +42,12 @@ bot.dialog('/', function (session) {
     session.send('You said ' + session.message.text);
 }); 
 
-bot.dialog('greet', function(session) {
-    session.send('Hey');
-});
+bot.dialog('greet', new builder.SimpleDialog(function (session, results) {
+    if (results && results.response) {
+        session.userData[UserNameKey] = results.response;
+        session.privateConversationData[UserWelcomedKey] = true;
+        return session.endDialog('Welcome %s! %s', results.response, HelpMessage);
+    }
+
+    builder.Prompts.text(session, 'Before get started, please tell me your name?');
+}));
