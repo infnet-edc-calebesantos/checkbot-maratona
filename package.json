@@ -12,6 +12,7 @@
   "dependencies": {
     "botbuilder": "^3.13.1",
     "botbuilder-azure": "^3.0.4",
+    "dotenv-extended": "^2.0.1",
     "restify": "^5.0.0"
   },
   "devDependencies": {
