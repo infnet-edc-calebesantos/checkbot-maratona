@@ -49,15 +49,15 @@ bot.set('persistConversationData', true);
 //     session.endDialog();
 // });
 
-// // reset bot dialog
-// bot.dialog('reset', function (session) {
-//     // reset data
-//     delete session.userData[UserNameKey];
-//     delete session.conversationData[TarefasKey];
-//     delete session.privateConversationData[TarefasKey];
-//     delete session.privateConversationData[UserWelcomedKey];
-//     session.endDialog('Ups... I\'m suffering from a memory loss...');
-// }).triggerAction({ matches: /^reset/i });
+// reset bot dialog
+bot.dialog('reset', function (session) {
+    // reset data
+    delete session.userData[UserNameKey];
+    delete session.conversationData[TarefasKey];
+    delete session.privateConversationData[TarefasKey];
+    delete session.privateConversationData[UserWelcomedKey];
+    session.endDialog('Ups... I\'m suffering from a memory loss...');
+}).triggerAction({ matches: /^reset/i });
 
 // // print current city dialog
 // bot.dialog('printCurrentCity', function (session) {
