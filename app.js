@@ -40,13 +40,7 @@ bot.set('storage', tableStorage);
 
 bot.dialog('greet', new builder.SimpleDialog(function (session, results) {
     console.log("teste");
-    if (results && results.response) {
-        session.userData[UserNameKey] = results.response;
-        session.privateConversationData[UserWelcomedKey] = true;
-        return session.endDialog('Welcome %s! %s', results.response, HelpMessage);
-    }
-
-    builder.Prompts.text(session, 'Before get started, please tell me your name?');
+    session.send('Hey');
 }));
 
 // change my current city dialog
