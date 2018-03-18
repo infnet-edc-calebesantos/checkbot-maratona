@@ -38,11 +38,8 @@ var bot = new builder.UniversalBot(connector, function(session) {
 });
 bot.set('storage', tableStorage);
 
-bot.dialog('/', function (session) {
-    session.send('You said ' + session.message.text);
-}); 
-
 bot.dialog('greet', new builder.SimpleDialog(function (session, results) {
+    console.log("teste");
     if (results && results.response) {
         session.userData[UserNameKey] = results.response;
         session.privateConversationData[UserWelcomedKey] = true;
@@ -51,3 +48,8 @@ bot.dialog('greet', new builder.SimpleDialog(function (session, results) {
 
     builder.Prompts.text(session, 'Before get started, please tell me your name?');
 }));
+
+// change my current city dialog
+bot.dialog('defaultDialog', function (session, args) {
+    session.endDialog('defaultDialog');
+}).triggerAction({ matches: /.*/i });
