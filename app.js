@@ -24,26 +24,16 @@ var recognizer = new builder_cognitiveservices.QnAMakerRecognizer({
 
 var basicQnAMakerDialog = new builder_cognitiveservices.QnAMakerDialog({
     recognizers: [recognizer],
-    defaultMessage: 'No match! Try changing the query terms!',
+    defaultMessage: 'Me desculpe não entendi. Pode-me dizer de outra forma?',
     qnaThreshold: 0.3
 });
 
 server.post('/api/messages', connector.listen());
 
-var HelpMessage = `\n- Caso você queira criar uma nova lista de tarefas, digite: lista <nome>
-\n-Caso queira adicionar uma nova tarefa a uma lista: adicionar <tarefa> na lista <lista>`;
-
 var UserNameKey = 'UserName';
 var UserWelcomedKey = 'UserWelcomed';
 var TarefasKey = 'Tarefas';
-
-basicQnAMakerDialog.respondFromQnAMakerResult = function(session, qnaMakerResult){
-    // Save the question
-    var question = session.message.text;
-    session.conversationData.userQuestion = question;
-    session.send(qnaMakerResult.answers[0].answer);
-}
-// bot.dialog('/', basicQnAMakerDialog);
+var HelpMessage = 'Caso queira adicionar uma nova tarefa digite: Adicionar <nomeTarefa>';
 
 // Setup bot with default dialog
 // var bot = new builder.UniversalBot(connector, function (session) {
@@ -55,21 +45,41 @@ basicQnAMakerDialog.respondFromQnAMakerResult = function(session, qnaMakerResult
 //     }
 // });
 
-var bot = new builder.UniversalBot(connector, basicQnAMakerDialog);
+var bot = new builder.UniversalBot(connector);
 
 // Enable Conversation Data persistence
 bot.set('persistConversationData', true);
 
-// // search dialog
-// bot.dialog('search', function (session, args, next) {
-//     // perform search
-//     var city = session.privateConversationData[TarefasKey] || session.conversationData[TarefasKey];
-//     var userName = session.userData[UserNameKey];
-//     var messageText = session.message.text.trim();
-//     session.send('%s, wait a few seconds. Searching for \'%s\' in \'%s\'...', userName, messageText, city);
-//     session.send('https://www.bing.com/search?q=%s', encodeURIComponent(messageText + ' in ' + city));
-//     session.endDialog();
-// });
+basicQnAMakerDialog.respondFromQnAMakerResult = function (session, qnaMakerResult) {
+    // Save the question
+    var question = session.message.text;
+    session.conversationData.userQuestion = question;
+    var answer = qnaMakerResult.answers[0].answer;
+
+    var isControlFormat = answer.includes(';');
+    if (!isControlFormat) {
+        session.send(answer);
+        return;
+    }
+
+    var control = answer.split(';');
+    var key = control[0];
+    var configuration = control.slice(1);
+    switch (key) {
+        case 'ADD_TODO':
+            session.endDialog('Tarefa adicionada!');
+            break;
+        case 'CHANGE_NAME':
+            var regexExtract = configuration[0];
+            var helpMessage = configuration[1];
+
+            username = session.message.text.replace(regexExtract, '');
+            session.userData[UserNameKey] = username;
+            session.endDialog('Bem-vindo %s! %s', username, helpMessage);
+            break;
+    }
+}
+bot.dialog('/', basicQnAMakerDialog);
 
 // reset bot dialog
 bot.dialog('reset', function (session) {
@@ -81,47 +91,43 @@ bot.dialog('reset', function (session) {
     session.endDialog('Dados foram removidos.');
 }).triggerAction({ matches: /^reset/i });
 
-// // print current city dialog
-// bot.dialog('printCurrentCity', function (session) {
-//     var userName = session.userData[UserNameKey];
-//     var defaultCity = session.conversationData[TarefasKey];
-//     var userCity = session.privateConversationData[TarefasKey];
-//     if (!defaultCity) {
-//         session.endDialog('I don\'t have a search city configured yet.');
-//     } else if (userCity) {
-//         session.endDialog(
-//             '%s, you have overridden the city. Your searches are for things in %s. The default conversation city is %s.',
-//             userName, userCity, defaultCity);
-//     } else {
-//         session.endDialog('Hey %s, I\'m currently configured to search for things in %s.', userName, defaultCity);
-//     }
-// }).triggerAction({ matches: /^current city/i });
-
-// // change current city dialog
-// bot.dialog('changeCurrentCity', function (session, args) {
-//     // change default city
-//     var newCity = args.intent.matched[1].trim();
-//     session.conversationData[TarefasKey] = newCity;
-//     var userName = session.userData[UserNameKey];
-//     session.endDialog('All set %s. From now on, all my searches will be for things in %s.', userName, newCity);
-// }).triggerAction({ matches: /^change city to (.*)/i });
-
-// change my current city dialog
 bot.dialog('addTodo', function (session, args) {
-    // change user's city
-    var todo = args.intent.matched[1].trim();
-    session.privateConversationData[TarefasKey] = todo;
+    var todo = args.intent.matched[2].trim();
+    var todoList = session.privateConversationData[TarefasKey] || '';
+
+    if (todoList)
+        todoList += ';';
+
+    session.privateConversationData[TarefasKey] = todoList + todo;
+
     var userName = session.userData[UserNameKey];
-    session.endDialog('Pronto %s! A seguinte tarefa', userName, newCity);
-}).triggerAction({ matches: /^adiciona (.*)/i });
+
+    session.send('Pronto %s! A seguinte tarefa "%s" foi adicionada.', userName, todo);
+    session.endDialog('Para ver outros comandos disponíveis digite: Ajuda');
+
+}).triggerAction({ matches: /^adiciona(r)? (.*)/i });
+
+bot.dialog('listTodos', function (session, args) {
+    var todos = (session.privateConversationData[TarefasKey] || '').split(';');
+    var userName = session.userData[UserNameKey];
+    var todoList = '';
+
+    todos.forEach(element => {
+        if (element)
+            todoList += '\n * ' + element + '\n';
+    });
+
+    if (todoList)
+        session.send('Suas tarefas:\n' + todoList);
+    else
+        session.send('Você ainda não possui novas tarefas.');
+    session.endDialog('Para ver outros comandos disponíveis digite: Ajuda');
+}).triggerAction({ matches: /^lista(r)?/i });
 
 // Greet dialog
-bot.dialog('greet', new builder.SimpleDialog(function (session, results) {
-    if (results && results.response) {
-        session.userData[UserNameKey] = results.response;
-        session.privateConversationData[UserWelcomedKey] = true;
-        return session.endDialog('Bem-vindo %s! %s', results.response, HelpMessage);
-    }
-
-    builder.Prompts.text(session, 'Olá, antes de tudo, poderia me dizer o seu nome?');
-}));
+bot.dialog('greet', function (session, args) {
+    var todo = args.intent.matched[1].trim();
+    session.userData[UserNameKey] = todo;
+    session.send('Bem-vindo %s!', todo);
+    session.send(HelpMessage);
+}).triggerAction({ matches: /^meu\s*nome\s*é\s*(.*)/i });
