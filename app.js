@@ -3,6 +3,7 @@ require('dotenv-extended').load();
 
 var builder = require('botbuilder');
 var restify = require('restify');
+var builder_cognitiveservices = require('botbuilder-cognitiveservices');
 
 // Setup Restify Server
 var server = restify.createServer();
@@ -16,24 +17,45 @@ var connector = new builder.ChatConnector({
     appPassword: process.env.MICROSOFT_APP_PASSWORD
 });
 
+var recognizer = new builder_cognitiveservices.QnAMakerRecognizer({
+    knowledgeBaseId: '5b882d6c-51fd-4f02-8792-66e96047d676', // process.env.QnAKnowledgebaseId, 
+    subscriptionKey: '27883617601c4945b0fec62b63888cbb'
+}); //process.env.QnASubscriptionKey});
+
+var basicQnAMakerDialog = new builder_cognitiveservices.QnAMakerDialog({
+    recognizers: [recognizer],
+    defaultMessage: 'No match! Try changing the query terms!',
+    qnaThreshold: 0.3
+});
+
 server.post('/api/messages', connector.listen());
 
-var HelpMessage = `- Caso você queira criar uma nova lista de tarefas, digite: lista <nome>
--Caso queira adicionar uma nova tarefa a uma lista: adicionar <tarefa> na lista <lista>`;
+var HelpMessage = `\n- Caso você queira criar uma nova lista de tarefas, digite: lista <nome>
+\n-Caso queira adicionar uma nova tarefa a uma lista: adicionar <tarefa> na lista <lista>`;
 
 var UserNameKey = 'UserName';
 var UserWelcomedKey = 'UserWelcomed';
 var TarefasKey = 'Tarefas';
 
-// Setup bot with default dialog
-var bot = new builder.UniversalBot(connector, function (session) {
+basicQnAMakerDialog.respondFromQnAMakerResult = function(session, qnaMakerResult){
+    // Save the question
+    var question = session.message.text;
+    session.conversationData.userQuestion = question;
+    session.send(qnaMakerResult.answers[0].answer);
+}
+// bot.dialog('/', basicQnAMakerDialog);
 
-    // is user's name set? 
-    var userName = session.userData[UserNameKey];
-    if (!userName) {
-        return session.beginDialog('greet');
-    }
-});
+// Setup bot with default dialog
+// var bot = new builder.UniversalBot(connector, function (session) {
+
+//     // is user's name set? 
+//     var userName = session.userData[UserNameKey];
+//     if (!userName) {
+//         return session.beginDialog('greet');
+//     }
+// });
+
+var bot = new builder.UniversalBot(connector, basicQnAMakerDialog);
 
 // Enable Conversation Data persistence
 bot.set('persistConversationData', true);
@@ -56,7 +78,7 @@ bot.dialog('reset', function (session) {
     delete session.conversationData[TarefasKey];
     delete session.privateConversationData[TarefasKey];
     delete session.privateConversationData[UserWelcomedKey];
-    session.endDialog('Ups... I\'m suffering from a memory loss...');
+    session.endDialog('Dados foram removidos.');
 }).triggerAction({ matches: /^reset/i });
 
 // // print current city dialog
