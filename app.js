@@ -35,16 +35,6 @@ var UserWelcomedKey = 'UserWelcomed';
 var TarefasKey = 'Tarefas';
 var HelpMessage = 'Caso queira adicionar uma nova tarefa digite: Adicionar <nomeTarefa>';
 
-// Setup bot with default dialog
-// var bot = new builder.UniversalBot(connector, function (session) {
-
-//     // is user's name set? 
-//     var userName = session.userData[UserNameKey];
-//     if (!userName) {
-//         return session.beginDialog('greet');
-//     }
-// });
-
 var bot = new builder.UniversalBot(connector);
 
 // Enable Conversation Data persistence
